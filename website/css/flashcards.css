@@ -1,0 +1,26 @@
+
+#add-word-button {
+  display: block;
+  position: fixed;
+  bottom: 10px;
+  right: 10px;
+  z-index: 100;
+}
+
+button .material-icons {
+  cursor: pointer;
+}
+
+#word-card button {
+  margin-left: 1em;
+  margin-right: 1em;
+}
+
+.mdl-card {
+  margin: 1em;
+  width: 95%;
+}
+
+.mic-on {
+  color: darkgreen;
+}
