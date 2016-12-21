@@ -1,7 +1,7 @@
 /* global Promise, SpeechSynthesisUtterance, webkitSpeechRecognition */
 /*jshint esversion: 6 */
 /*jshint unused:true */
-/*exported Speaker, Listener */
+/*exported Speaker, Listener, round */
 
 
 function round(number, precision=3) {
@@ -18,7 +18,7 @@ class Speaker {
     var that = this;
     // Immediately try to pre-load
     this.getVoicePromise().then(function () {
-      console.log('Pre-got a best voice:' + that.bestVoice);
+      console.log('Pre-got a best voice:', that.bestVoice);
     });
   }
 
@@ -37,42 +37,56 @@ class Speaker {
       });
   }
 
+  // private
+  getBestVoice() {
+    var voices = window.speechSynthesis.getVoices();
+    if (voices && voices.length > 0) {
+      return voices.find(function (voice) {
+        // Only Chrome
+        return voice.name == 'Google US English';
+      });
+    }
+  }
+
   getVoicePromise() {
     var that = this;
-    return new Promise(function (resolve) {
-      if (that.bestVoice) {
-        resolve(that.bestVoice);
-      }
-      // Voices aren't loaded immediately, so have to get fancy.
-      var voices = window.speechSynthesis.getVoices();
-      if (voices && voices.length > 0) {
-        that.bestVoice = voices.find(function (voice) {
-          // only Chrome
-          return voice.name == 'Google US English';
-        });
-        resolve(that.bestVoice);
-      } else {
-        window.speechSynthesis.onvoiceschanged = function () {
-          that.bestVoice = window.speechSynthesis.getVoices().find(function (voice) {
-            // Only Chrome
-            return voice.name == 'Google US English';
-          });
+    return Promise.race([
+      new Promise(function (resolve) {
+        if (that.bestVoice) {
           resolve(that.bestVoice);
+        }
+      }),
+      new Promise(function (resolve) {
+        // Maybe voices are already loaded?
+        var voice = that.getBestVoice();
+        if(voice) {
+          that.bestVoice = voice;
+          resolve(that.bestVoice);
+        }
+      }),
+      new Promise(function (resolve) {
+        // Also try waiting for the event
+        window.speechSynthesis.onvoiceschanged = function() {
+          var voice = that.getBestVoice();
+          if(voice) {
+            that.bestVoice = voice;
+            resolve(that.bestVoice);
+          }
         };
-      }
-    });
+      })
+    ]);
   }
+
 }
 
 /** 
  * Generic listener that fires off all heard words.
- * indicationEltSelector should be a material design i icon
- * Element IDs: mic
  */
 class Listener {
   constructor() {
     var that = this;
-    that.indicationElt = document.querySelector('#mic');
+    that.micElt = document.querySelector('#listener-mic');
+    that.heardWordsElt = document.querySelector('#listener-heard-words');
     that.recognition = new webkitSpeechRecognition();
     that.recognition.continuous = true; // Rolling, may not be the best way to do single words
     that.recognition.interimResults = true; // Start with fuzzy, maybe will improve?
@@ -82,26 +96,29 @@ class Listener {
     // TODO: grammars?
 
     that.recognition.onend = function () {
-      that.indicationElt.classList.toggle('mic-on', false);
       console.log('recognition.onend');
-      // times out after x seconds, good place to auto-restart
-      that.errorCount++;
-      if(that.errorCount<10) {
-        that.start();
-      } else {
-        console.error('TOO MANY ERRORS');
+      if(that.micElt) {
+        that.micElt.classList.toggle('mic-on', false);
       }
     };
 
     that.recognition.onerror = function (e) {
-      that.indicationElt.classList.toggle('mic-on', false);
-      console.error('recognition error:' + e.error + ' ' + e.message, e);
-      // TODO: restart with a limit?
+      switch(e.error) {
+        case 'aborted':
+          // ignore
+          break;
+        default:
+          console.error('recognition.onerror:' + e.error + ' ' + e.message, e);
+          // TODO: restart with a limit?        
+      }
+      if(that.micElt) {
+        that.micElt.classList.toggle('mic-on', false);
+      }
     };
 
     that.recognition.onnomatch = function () {
-      that.indicationElt.classList.toggle('mic-on', false);
-      console.error('recognition nomatch');
+      console.error('recognition.onnomatch');
+      //that.indicationElt.classList.toggle('mic-on', false);
       // TODO: restart with a limit?
     };
 
@@ -109,46 +126,42 @@ class Listener {
       // SpeechRecognitionResultList - SpeechRecognitionResult
       // Skip ahead to the end of anything final
       for (var i = e.resultIndex; i < e.results.length; ++i) {
-        var thinkKnow = e.results[i].isFinal ? 'know' : 'think';
-        //console.info('I ' + thinkKnow + ' I heard: "' + e.results[i][0].transcript + '" ' + round(e.results[i][0].confidence));
         that.onheard(e.results[i][0].transcript);
       }
     };
-    // Starts running
-    that.start();
   }
 
+  /* Start listening,  */
   start() {
+    console.info('Listener.start');
     this.recognition.start();
-    this.indicationElt.classList.toggle('mic-on', true);
+    if(this.micElt) {
+      this.micElt.classList.toggle('mic-on', true);
+    }
   }
 
-  stop() {
+  /* Stop listening, ignore results */
+  abort() {
+    console.info('Listener.abort');
     this.recognition.abort();
+    if(this.micElt) {
+      this.micElt.classList.toggle('mic-on', false);
+    }
   }
 
-  /** Starts set to the default.  I should learn how to do events. */
-  onheard(heardWords) {
-    this._onheard(heardWords);
-  }
-
-  /** Default callback */
-  _onheard(heardWords) {
-    console.info('I passively heard: "' + heardWords + '"');
-  }
-
-  /** Instead of listening for anything, return a Promise listens for a specific word */
+  /** return a Promise listens for a specific word.  Requires a "start" call to begin. */
   listenForWord(word) {
     var that = this;
-    return new Promise(function (resolve, reject) {
-      console.log('Listening for a word:', word);
+    return new Promise(function (resolve) {
+      console.info('Listener.listenForWord:', word);
       var wordMatch = new RegExp('.*\\b' + word + '\\b.*', 'i');
       that.onheard = function(heardWords) {
+        that.heardWordsElt.innerHTML = heardWords;
         if(wordMatch.test(heardWords)) {
-          that.onheard = that._onheard;
+          that.abort();
           resolve(heardWords);
         } else {
-          console.info('I heard non-matching audio:"' + heardWords + '"');
+          console.info('Ignoring non-matching words:"' + heardWords + '"');
         }
       };
     });
