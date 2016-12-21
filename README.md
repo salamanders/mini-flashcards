@@ -3,11 +3,14 @@ Learn how to say words!
 
 # TODO
 
-[ ] Select words at better than random
-[ ] start with small words
-[ ] start to skip "learned" words
-[ ] retry a failed word in a few clicks
-[ ] keep score to level up or make it to point thresholds
+- [x] Seed a reasonable word list
+- [x] Listen to the word until you say it
+- [x] Read words out loud when you request help
+- [ ] Select words at better than random
+- [ ] start with small words
+- [ ] start to skip "learned" words
+- [ ] retry a failed word in a few clicks
+- [ ] keep score to level up or make it to point thresholds
 
 ## Developer
 
