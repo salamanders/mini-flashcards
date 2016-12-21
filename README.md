@@ -15,25 +15,30 @@ Learn how to say words!
 
 ## Developer
 
-* Project Console: https://console.firebase.google.com/project/mini-flashcards/overview
 * Hosting URL: https://mini-flashcards.firebaseapp.com
+* Project Console: https://console.firebase.google.com/project/mini-flashcards/overview
 * Docs: https://firebase.google.com/docs/hosting/full-config
 
 ### One-Time
+
+```
 npm install -g firebase-tools
 firebase login
 firebase init
 firebase deploy # lots of times
+```
 
 # github
+
+```
 git init
 git add *
 git commit -m "first commit"
 git remote add origin https://github.com/salamanders/mini-flashcards.git
 git push -u origin master
+```
 
-
-# Junk
+# Scratchpad
 
 ```
 .then(function() {
