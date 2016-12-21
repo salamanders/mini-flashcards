@@ -122,6 +122,10 @@ function mainLoop() {
   myListener.start();
   myListener.listenForWord(word).then(function(heardWords) {
     console.log('SUCCESS We heard what we were looking for:' + heardWords);
+    document.querySelector('#success').style.display = 'block';
+    setTimeout(function(){
+      document.querySelector('#success').style.display = 'none';
+    }, 1000);
     wordRef.update({ success: wordSnapshot.val().success + 1 });
     finishWord();
   });

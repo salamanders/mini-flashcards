@@ -37,3 +37,12 @@ button .material-icons {
   font-weight: bold;
   font-size: 3em;
 }
+
+#success {
+  display: none;
+  position: fixed;
+  top: 1em;
+  right: 1em;
+  z-index: 101;
+  font-size: 5em;
+}
